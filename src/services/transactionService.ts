@@ -13,7 +13,7 @@ export const createTransaction = async (description: string, amount: number, cat
             category,
             type,
             date: new Date().toLocaleDateString('pt-BR'),
-            createdAt: serverTimestamp(), // Essencial para ordenar o extrato!
+            createdAt: serverTimestamp(),
         });
         console.log("Sucesso! Transação gravada.");
     } catch (e) {

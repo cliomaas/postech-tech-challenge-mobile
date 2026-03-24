@@ -3,7 +3,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator, Alert, Image,
@@ -16,7 +15,7 @@ import {
 } from 'react-native';
 import { Button } from '../src/components/ds/Button';
 import { InputField } from '../src/components/ds/InputField';
-import { auth, db, storage } from '../src/services/firebaseConfig';
+import { auth, db } from '../src/services/firebaseConfig';
 
 const CATEGORIES = ['ALIMENTACAO', 'MORADIA', 'LAZER', 'TRANSPORTE', 'OUTROS', 'INCOME'];
 
@@ -37,12 +36,14 @@ export default function TransactionForm() {
     const [category, setCategory] = useState('OUTROS');
     const [type, setType] = useState<'in' | 'out'>('out');
     const [image, setImage] = useState<string | null>(null);
+    const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const [mimeType, setMimeType] = useState<string>('image/jpeg');
     const [categoryTouched, setCategoryTouched] = useState(false);
 
 
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('CARD'); // Inicia com cartão
+    const [paymentMethod, setPaymentMethod] = useState('CARD');
     const [sendLater, setSendLater] = useState(false);
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -66,7 +67,7 @@ export default function TransactionForm() {
         }
     }, [suggestion, categoryTouched]);
 
-    // Carregar dados (Protegido contra uid null)
+    // Protegido contra uid null
     useEffect(() => {
         const loadData = async () => {
             if (id && auth.currentUser) {
@@ -109,19 +110,17 @@ export default function TransactionForm() {
 
         try {
             let receiptUrl = image;
-            if (image && image.startsWith('file://')) {
-                const response = await fetch(image);
-                const blob = await response.blob();
-                const storageRef = ref(storage, `receipts/${auth.currentUser.uid}/${Date.now()}`);
-                await uploadBytes(storageRef, blob);
-                receiptUrl = await getDownloadURL(storageRef);
+
+            if (imageBase64) {
+                receiptUrl = `data:${mimeType};base64,${imageBase64}`;
             }
+
             const data = {
                 description: description.trim(),
                 amount: parsedAmount,
                 category: type === 'in' ? 'INCOME' : category,
                 type,
-                date: date.toISOString().split('T')[0], // Usa a data do estado
+                date: date.toISOString().split('T')[0], // Usa a data do estado atual
                 paymentMethod,
                 isScheduled: sendLater, // Salva se é agendado ou não
                 receiptUrl,
@@ -139,6 +138,8 @@ export default function TransactionForm() {
             router.back();
         } catch (e) {
             Alert.alert("Erro", "Não foi possível salvar.");
+            console.error("Erro detalhado ao salvar transação:", e);
+            Alert.alert("Erro", `Não foi possível salvar: ${e instanceof Error ? e.message : 'Erro desconhecido'}`);
         } finally {
             setLoading(false);
         }
@@ -294,8 +295,24 @@ export default function TransactionForm() {
             )}
 
             <TouchableOpacity style={styles.imagePicker} onPress={async () => {
-                let res = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
-                if (!res.canceled) setImage(res.assets[0].uri);
+                let res = await ImagePicker.launchImageLibraryAsync({
+                    quality: 0.2, // Reduzido para 20% para caber tranquilamente no limite de 1MB do Firestore (evitando assim o uso do Storage)
+                    allowsEditing: true, // Deixa o usuário cortar a foto para reduzir ainda mais
+                    base64: true
+                });
+                if (!res.canceled) {
+                    const selected = res.assets[0];
+                    setImage(selected.uri);
+                    setImageBase64(selected.base64 || null);
+                    if (selected.mimeType) {
+                        setMimeType(selected.mimeType);
+                    } else {
+                        const uriStr = selected.uri.toLowerCase();
+                        if (uriStr.endsWith('.png')) setMimeType('image/png');
+                        else if (uriStr.endsWith('.webp')) setMimeType('image/webp');
+                        else setMimeType('image/jpeg'); // Fallback seguro
+                    }
+                }
             }}>
                 {image ? <Image source={{ uri: image }} style={styles.preview} /> : (
                     <View style={styles.imagePlaceholder}>
@@ -334,7 +351,7 @@ const styles = StyleSheet.create({
     imagePlaceholder: { alignItems: 'center' },
     saveBtn: { backgroundColor: '#4f46e5', borderRadius: 16, height: 56, marginBottom: 40 },
     pixContainer: {
-        backgroundColor: '#E4EDE3', // Tom de verde clarinho do ByteBank
+        backgroundColor: '#E4EDE3',
         padding: 15,
         borderRadius: 12,
         marginBottom: 20,
@@ -356,7 +373,7 @@ const styles = StyleSheet.create({
     checkboxLabel: { fontSize: 14, color: '#004D40', fontWeight: '600' },
     infoText: { fontSize: 11, color: '#64748b', marginTop: 8, fontStyle: 'italic' },
     inputDisabled: {
-        backgroundColor: '#f1f5f9', // Cor de fundo cinza para parecer desabilitado
+        backgroundColor: '#f1f5f9',
         borderColor: '#e2e8f0',
     },
     dateInputContent: {

@@ -55,7 +55,7 @@ export default function Dashboard() {
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
                 {/* HEADER UNIFICADO */}
                 <View style={styles.header}>
-                    <Text style={styles.welcome}>Olá, {userName} 👋</Text>
+                    <Text style={styles.welcome}>Olá, {userName}!</Text>
 
                     <BalanceCard balance={balance} />
 
