@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
+    apiKey: "AIzaSyBLf0hhRYEpX4UevcatNRSYhxCYsEzAKA4",
+    authDomain: "postech-tech-challenge.firebaseapp.com",
+    projectId: "postech-tech-challenge",
+    storageBucket: "postech-tech-challenge.firebasestorage.app",
+    messagingSenderId: "930807512648",
+    appId: "1:930807512648:web:4bc777e0b3372e0512a27d"
 };
 
 const app = initializeApp(firebaseConfig);
